@@ -128,7 +128,7 @@ class AuthController extends Controller
         }
 
         $user = User::create($userData);
-         $this->notificationService->sendUserRegisteredNotification($user);
+        //  $this->notificationService->sendUserRegisteredNotification($user);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -332,7 +332,7 @@ class AuthController extends Controller
         $resetUrl = url("/reset-password?token={$token}&email=" . urlencode($user->email));
 
         // Envoi du mail via Brevo
-        $this->notificationService->sendPasswordResetNotification($user, $resetUrl);
+        // $this->notificationService->sendPasswordResetNotification($user, $resetUrl);
 
         return response()->json([
             'message' => 'Si votre email existe dans notre système, vous recevrez un lien de réinitialisation.'
