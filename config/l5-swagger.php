@@ -6,9 +6,6 @@ return [
     |--------------------------------------------------------------------------
     | Default Documentation
     |--------------------------------------------------------------------------
-    |
-    | La documentation par défaut à utiliser.
-    |
     */
     'default' => 'default',
 
@@ -16,9 +13,6 @@ return [
     |--------------------------------------------------------------------------
     | Documentation Definitions
     |--------------------------------------------------------------------------
-    |
-    | Ici tu peux définir plusieurs documentations si besoin.
-    |
     */
     'documentations' => [
         'default' => [
@@ -36,18 +30,22 @@ return [
                         'description' => 'Serveur local',
                     ],
                     [
-                        'url' => env('SWAGGER_PROD_URL', 'https://mon-backend.example.com/api'),
+                        'url' => env('SWAGGER_PROD_URL', 'https://hotel-backend-production-eaf0.up.railway.app/api'),
                         'description' => 'Serveur production',
                     ],
                 ],
             ],
 
             'routes' => [
-                'api' => 'api/documentation', // URL de Swagger UI
+                'api' => 'api/documentation',
             ],
 
             'paths' => [
-                'docs' => storage_path('api-docs'), // Dossier de stockage
+                'docs' => storage_path('api-docs'),
+
+                // ✅ Force Swagger à servir les assets en HTTPS
+                'use_absolute_path' => true,
+                'assets' => env('L5_SWAGGER_ASSETS', 'https://hotel-backend-production-eaf0.up.railway.app/docs/asset'),
             ],
         ],
     ],
@@ -56,18 +54,12 @@ return [
     |--------------------------------------------------------------------------
     | Default Settings
     |--------------------------------------------------------------------------
-    |
-    | Paramètres par défaut de L5-Swagger.
-    |
     */
     'defaults' => [
-
-        // ✅ Ajout de la clé 'proxy' pour éviter l'erreur
         'proxy' => false,
         'operations_sort' => null,
         'additional_config_url' => null,
         'validator_url' => null,
-
 
         'routes' => [
             'docs' => 'docs',
@@ -87,7 +79,7 @@ return [
             'docs_yaml' => 'api-docs.yaml',
             'format_to_use_for_docs' => 'json',
             'annotations' => [
-                base_path('app'), // Analyse tous les fichiers dans app/
+                base_path('app'),
             ],
             'excludes' => [],
             'base' => '/',
@@ -98,13 +90,12 @@ return [
             'security' => [],
         ],
 
-        // Paramètres supplémentaires pour Swagger UI
         'swagger_ui' => [
             'display' => true,
             'validator_url' => null,
         ],
 
-        'generate_always' => true, // génère automatiquement à chaque refresh (optionnel)
+        'generate_always' => true,
         'generate_yaml_copy' => false,
         'swagger_version' => '4.1.0',
     ],
