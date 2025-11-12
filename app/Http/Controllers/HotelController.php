@@ -16,6 +16,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Routing\Controller as BaseController;
 use Exception;
 
+/**
+ * @OA\Tag(
+ *     name="Hotels",
+ *     description="Gestion des hôtels"
+ * )
+ */
 class HotelController extends BaseController
 {
     protected $fileUploadService;
@@ -30,6 +36,82 @@ class HotelController extends BaseController
         $this->middleware('auth:sanctum');
     }
 
+    /**
+     * @OA\Get(
+     *     path="/hotels",
+     *     summary="Lister les hôtels avec pagination et filtres",
+     *     tags={"Hotels"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Numéro de page",
+     *         @OA\Schema(type="integer", default=1)
+     *     ),
+     *     @OA\Parameter(
+     *         name="per_page",
+     *         in="query",
+     *         description="Nombre d'éléments par page (5-100)",
+     *         @OA\Schema(type="integer", default=15)
+     *     ),
+     *     @OA\Parameter(
+     *         name="statut",
+     *         in="query",
+     *         description="Filtrer par statut",
+     *         @OA\Schema(type="string", enum={"actif", "inactif"})
+     *     ),
+     *     @OA\Parameter(
+     *         name="device",
+     *         in="query",
+     *         description="Filtrer par devise",
+     *         @OA\Schema(type="string", enum={"FCFA", "EURO", "DOLLARS"})
+     *     ),
+     *     @OA\Parameter(
+     *         name="prix_min",
+     *         in="query",
+     *         description="Prix minimum",
+     *         @OA\Schema(type="number", format="float")
+     *     ),
+     *     @OA\Parameter(
+     *         name="prix_max",
+     *         in="query",
+     *         description="Prix maximum",
+     *         @OA\Schema(type="number", format="float")
+     *     ),
+     *     @OA\Parameter(
+     *         name="search",
+     *         in="query",
+     *         description="Recherche textuelle (nom, adresse, téléphone, email)",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="sort_field",
+     *         in="query",
+     *         description="Champ de tri",
+     *         @OA\Schema(type="string", enum={"nom", "prix_par_nuit", "statut", "device", "created_at", "updated_at"})
+     *     ),
+     *     @OA\Parameter(
+     *         name="sort_direction",
+     *         in="query",
+     *         description="Direction du tri",
+     *         @OA\Schema(type="string", enum={"asc", "desc"})
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Liste des hôtels paginée",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Hotel")),
+     *             @OA\Property(property="pagination", type="object",
+     *                 @OA\Property(property="current_page", type="integer", example=1),
+     *                 @OA\Property(property="last_page", type="integer", example=5),
+     *                 @OA\Property(property="per_page", type="integer", example=15),
+     *                 @OA\Property(property="total", type="integer", example=75)
+     *             )
+     *         )
+     *     )
+     * )
+     */
     public function index(Request $request)
     {
         try {
@@ -119,6 +201,40 @@ class HotelController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *     path="/hotels",
+     *     summary="Créer un nouvel hôtel",
+     *     tags={"Hotels"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"nom", "adresse", "mail", "telephone", "prix_par_nuit", "device", "statut"},
+     *                 @OA\Property(property="nom", type="string", maxLength=255, example="Hôtel Paradise"),
+     *                 @OA\Property(property="adresse", type="string", example="123 Avenue des Champs-Élysées, Paris"),
+     *                 @OA\Property(property="mail", type="string", format="email", example="contact@hotelparadise.com"),
+     *                 @OA\Property(property="telephone", type="string", example="+33123456789"),
+     *                 @OA\Property(property="prix_par_nuit", type="number", format="float", minimum=0, example=150.00),
+     *                 @OA\Property(property="device", type="string", enum={"FCFA", "EURO", "DOLLARS"}, example="EURO"),
+     *                 @OA\Property(property="statut", type="string", enum={"actif", "inactif"}, example="actif"),
+     *                 @OA\Property(property="photo", type="string", format="binary", description="Photo de l'hôtel")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Hôtel créé avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Hôtel créé avec succès"),
+     *             @OA\Property(property="data", ref="#/components/schemas/Hotel")
+     *         )
+     *     )
+     * )
+     */
     public function store(Request $request)
     {
         try {
@@ -179,6 +295,37 @@ class HotelController extends BaseController
         }
     }
 
+    /**
+     * @OA\Get(
+     *     path="/hotels/{id}",
+     *     summary="Récupérer un hôtel spécifique",
+     *     tags={"Hotels"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="ID de l'hôtel",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Détails de l'hôtel",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", ref="#/components/schemas/Hotel")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Hôtel non trouvé",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Hôtel non trouvé")
+     *         )
+     *     )
+     * )
+     */
     public function show($id)
     {
         try {
@@ -209,6 +356,58 @@ class HotelController extends BaseController
         }
     }
 
+    /**
+     * @OA\Put(
+     *     path="/hotels/{id}",
+     *     summary="Modifier un hôtel",
+     *     tags={"Hotels"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="ID de l'hôtel",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(property="nom", type="string", maxLength=255, example="Hôtel Paradise Modifié"),
+     *                 @OA\Property(property="adresse", type="string", example="456 Nouvelle Adresse, Paris"),
+     *                 @OA\Property(property="mail", type="string", format="email", example="nouveau@hotelparadise.com"),
+     *                 @OA\Property(property="telephone", type="string", example="+33987654321"),
+     *                 @OA\Property(property="prix_par_nuit", type="number", format="float", minimum=0, example=200.00),
+     *                 @OA\Property(property="device", type="string", enum={"FCFA", "EURO", "DOLLARS"}, example="EURO"),
+     *                 @OA\Property(property="statut", type="string", enum={"actif", "inactif"}, example="actif"),
+     *                 @OA\Property(property="photo", type="string", format="binary", description="Nouvelle photo de l'hôtel")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Hôtel modifié avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Hôtel modifié avec succès"),
+     *             @OA\Property(property="data", ref="#/components/schemas/Hotel")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Non autorisé",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Non autorisé à modifier cet hôtel")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Hôtel non trouvé"
+     *     )
+     * )
+     */
     public function update(Request $request, $id)
     {
         try {
@@ -286,6 +485,40 @@ class HotelController extends BaseController
         }
     }
 
+    /**
+     * @OA\Post(
+     *     path="/hotels/{id}/update-photo",
+     *     summary="Mettre à jour uniquement la photo d'un hôtel",
+     *     tags={"Hotels"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="ID de l'hôtel",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"photo"},
+     *                 @OA\Property(property="photo", type="string", format="binary", description="Nouvelle photo de l'hôtel")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Photo mise à jour avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Photo mise à jour avec succès"),
+     *             @OA\Property(property="photo", type="string", example="https://cloudinary.com/new-photo.jpg")
+     *         )
+     *     )
+     * )
+     */
     public function updatePhoto(Request $request, $id)
     {
         try {
@@ -352,6 +585,33 @@ class HotelController extends BaseController
         }
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/hotels/{id}",
+     *     summary="Supprimer un hôtel (soft delete)",
+     *     tags={"Hotels"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="ID de l'hôtel",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Hôtel supprimé avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Hôtel supprimé avec succès")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Hôtel non trouvé"
+     *     )
+     * )
+     */
     public function destroy($id)
     {
         try {
@@ -389,6 +649,33 @@ class HotelController extends BaseController
         }
     }
 
+    /**
+     * @OA\Patch(
+     *     path="/hotels/{id}/restore",
+     *     summary="Restaurer un hôtel supprimé",
+     *     tags={"Hotels"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="ID de l'hôtel",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Hôtel restauré avec succès",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Hôtel restauré avec succès")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Hôtel non trouvé"
+     *     )
+     * )
+     */
     public function restore($id)
     {
         try {
@@ -426,6 +713,27 @@ class HotelController extends BaseController
         }
     }
 
+    /**
+     * @OA\Get(
+     *     path="/hotels/statistiques",
+     *     summary="Récupérer les statistiques des hôtels",
+     *     tags={"Hotels"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Statistiques des hôtels",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="total_hotels", type="integer", example=25),
+     *                 @OA\Property(property="hotels_actifs", type="integer", example=20),
+     *                 @OA\Property(property="hotels_inactifs", type="integer", example=3),
+     *                 @OA\Property(property="hotels_supprimes", type="integer", example=2)
+     *             )
+     *         )
+     *     )
+     * )
+     */
     public function statistiques(Request $request)
     {
         try {
@@ -459,6 +767,27 @@ class HotelController extends BaseController
         }
     }
 
+    /**
+     * @OA\Get(
+     *     path="/hotels/statistiques/graphiques",
+     *     summary="Récupérer les statistiques pour graphiques (hôtels créés par mois)",
+     *     tags={"Hotels"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Statistiques pour graphiques",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="mois", type="string", example="January 2024"),
+     *                     @OA\Property(property="total", type="integer", example=5)
+     *                 )
+     *             )
+     *         )
+     *     )
+     * )
+     */
     public function statistiquesGraphiques(Request $request)
     {
         try {
@@ -498,6 +827,32 @@ class HotelController extends BaseController
         }
     }
 
+    /**
+     * @OA\Get(
+     *     path="/enums",
+     *     summary="Récupérer les valeurs des enums utilisés dans l'application",
+     *     tags={"Utils"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Valeurs des enums",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="statut_hotel", type="object",
+     *                     @OA\Property(property="ACTIF", type="string", example="actif"),
+     *                     @OA\Property(property="INACTIF", type="string", example="inactif")
+     *                 ),
+     *                 @OA\Property(property="devices", type="object",
+     *                     @OA\Property(property="FCFA", type="string", example="FCFA"),
+     *                     @OA\Property(property="EURO", type="string", example="EURO"),
+     *                     @OA\Property(property="DOLLARS", type="string", example="DOLLARS")
+     *                 )
+     *             )
+     *         )
+     *     )
+     * )
+     */
     public function getEnums()
     {
         try {
@@ -528,3 +883,4 @@ class HotelController extends BaseController
         }
     }
 }
+
