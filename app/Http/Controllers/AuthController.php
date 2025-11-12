@@ -4,22 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\FileUploadService;
+use App\Services\NotificationService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     protected $fileUploadService;
+    protected $notificationService;
 
-    public function __construct(FileUploadService $fileUploadService)
+    public function __construct(FileUploadService $fileUploadService, NotificationService $notificationService)
     {
         $this->fileUploadService = $fileUploadService;
+        $this->notificationService = $notificationService;
     }
 
     public function register(Request $request)
@@ -48,6 +52,7 @@ class AuthController extends Controller
         }
 
         $user = User::create($userData);
+         $this->notificationService->sendUserRegisteredNotification($user);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -144,24 +149,39 @@ class AuthController extends Controller
 
     public function forgotPassword(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-        ]);
+        $validator = Validator::make($request->all(), ['email' => 'required|email']);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        $status = Password::sendResetLink(
-            $request->only('email')
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            // Toujours renvoyer le même message pour la sécurité
+            return response()->json([
+                'message' => 'Si votre email existe dans notre système, vous recevrez un lien de réinitialisation.'
+            ]);
+        }
+
+        // Générer un token aléatoire
+        $token = Str::random(64);
+        DB::table('password_resets')->updateOrInsert(
+            ['email' => $user->email],
+            ['token' => Hash::make($token), 'created_at' => now()]
         );
 
-        return $status === Password::RESET_LINK_SENT
-            ? response()->json(['message' => __($status)])
-            : response()->json(['message' => __($status)], 400);
+        $resetUrl = url("/reset-password?token={$token}&email=" . urlencode($user->email));
+
+        // Envoi du mail via Brevo
+        $this->notificationService->sendPasswordResetNotification($user, $resetUrl);
+
+        return response()->json([
+            'message' => 'Si votre email existe dans notre système, vous recevrez un lien de réinitialisation.'
+        ]);
     }
 
-    public function resetPassword(Request $request)
+   public function resetPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'token' => 'required',
@@ -176,11 +196,9 @@ class AuthController extends Controller
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user, $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password)
-                ])->setRememberToken(Str::random(60));
-
-                $user->save();
+                $user->forceFill(['password' => Hash::make($password)])
+                     ->setRememberToken(Str::random(60))
+                     ->save();
 
                 event(new PasswordReset($user));
             }
@@ -190,6 +208,7 @@ class AuthController extends Controller
             ? response()->json(['message' => __($status)])
             : response()->json(['message' => __($status)], 400);
     }
+
 
     public function logout(Request $request)
     {

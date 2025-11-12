@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Hotel;
 use App\Enums\StatutHotel;
 use App\Enums\Device;
+use App\Filters\HotelFilter;
 use App\Services\FileUploadService;
+use App\Services\PaginationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
@@ -17,10 +19,14 @@ use Exception;
 class HotelController extends BaseController
 {
     protected $fileUploadService;
+    protected $hotelFilter;
+    protected $paginationService;
 
-    public function __construct(FileUploadService $fileUploadService)
+    public function __construct(FileUploadService $fileUploadService, HotelFilter $hotelFilter, PaginationService $paginationService)
     {
         $this->fileUploadService = $fileUploadService;
+        $this->hotelFilter = $hotelFilter;
+        $this->paginationService = $paginationService;
         $this->middleware('auth:sanctum');
     }
 
@@ -28,23 +34,87 @@ class HotelController extends BaseController
     {
         try {
             $user = $request->user();
-            $hotels = $user->hotels()->withTrashed()->get();
+            
+            // Construction de la requête de base
+            $query = Hotel::withTrashed()->where('user_id', $user->id);
 
-            return response()->json([
+            // Application des filtres
+            $this->hotelFilter->apply($query, $request);
+
+            // Pagination
+            $perPage = $this->paginationService->validatePerPage($request->get('per_page'));
+            $hotels = $query->paginate($perPage);
+
+            // Données de réponse
+            $response = [
                 'success' => true,
-                'data' => $hotels,
-                'count' => $hotels->count()
+                'data' => $hotels->items(),
+                'pagination' => $this->paginationService->getPaginationData($hotels),
+                'filters' => $this->hotelFilter->getAppliedFilters($request),
+                'meta' => [
+                    'total' => $hotels->total(),
+                    'current_count' => count($hotels->items()),
+                    'has_more' => $hotels->hasMorePages(),
+                ]
+            ];
+
+            Log::info('Hotels fetched successfully', [
+                'user_id' => $user->id,
+                'total_results' => $hotels->total(),
+                'applied_filters' => $response['filters']
             ]);
+
+            return response()->json($response);
 
         } catch (Exception $e) {
             Log::error('Error fetching hotels', [
                 'user_id' => $request->user()->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'filters' => $request->all()
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des hôtels'
+            ], 500);
+        }
+    }
+
+    public function getFilterOptions()
+    {
+        try {
+            $options = [
+                'statuts' => collect(StatutHotel::cases())->map(fn($case) => [
+                    'value' => $case->value,
+                    'label' => $case->label(),
+                ]),
+                'devices' => collect(Device::cases())->map(fn($case) => [
+                    'value' => $case->value,
+                    'label' => $case->label(),
+                    'symbol' => $case->symbol(),
+                ]),
+                'sort_fields' => [
+                    ['value' => 'nom', 'label' => 'Nom'],
+                    ['value' => 'prix_par_nuit', 'label' => 'Prix par nuit'],
+                    ['value' => 'statut', 'label' => 'Statut'],
+                    ['value' => 'created_at', 'label' => 'Date de création'],
+                ],
+                'sort_directions' => [
+                    ['value' => 'asc', 'label' => 'Croissant'],
+                    ['value' => 'desc', 'label' => 'Décroissant'],
+                ]
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data' => $options
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Error fetching filter options', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des options'
             ], 500);
         }
     }
