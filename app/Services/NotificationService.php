@@ -13,7 +13,7 @@ class NotificationService
     public function sendUserRegisteredNotification($user)
     {
         try {
-            Mail::to($user->email)->send(new UserRegistered($user));
+            Mail::to($user->email)->queue(new UserRegistered($user));
             Log::info('User registration email queued', ['user_id' => $user->id]);
             return true;
         } catch (Exception $e) {
@@ -28,7 +28,7 @@ class NotificationService
     public function sendPasswordResetNotification($user, $resetUrl)
     {
         try {
-            Mail::to($user->email)->send(new PasswordResetRequested($user, $resetUrl));
+            Mail::to($user->email)->queue(new PasswordResetRequested($user, $resetUrl));
             Log::info('Password reset email queued', ['user_id' => $user->id]);
             return true;
         } catch (Exception $e) {

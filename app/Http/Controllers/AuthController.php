@@ -31,7 +31,7 @@ use Illuminate\Support\Str;
  * )
  *
  * @OA\Server(
- *     url="https://mon-backend.example.com/api",
+ *     url="https://hotel-backend-production-eaf0.up.railway.app/api",
  *     description="Serveur de production"
  * )
  *
